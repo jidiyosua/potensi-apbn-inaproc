@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Realisasi Pengadaan INAPROC — Telkomsel Enterprise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- ═══ LOGIN PAGE ═══ -->
+<div id="loginPage" class="login-overlay">
+  <div class="login-card">
+    <div class="login-brand-strip"></div>
+    <div class="login-icon">🔒</div>
+    <h2>Telkomsel Enterprise</h2>
+    <p class="login-sub">Dashboard Realisasi Pengadaan INAPROC<br>Masukkan password untuk melanjutkan</p>
+    <input type="password" id="loginPw" placeholder="Masukkan password..." autocomplete="off">
+    <button id="loginBtn" onclick="doLogin()">🔐 Masuk</button>
+    <div id="loginErr" class="login-error" style="display:none">❌ Password salah.</div>
+    <p class="login-footer">Bid Management — Data Science | 2026</p>
+  </div>
+</div>
+
+<!-- ═══ LOADING OVERLAY ═══ -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="loading-card">
+    <div class="loading-spinner"></div>
+    <h3 id="loadingTitle">Memuat Database...</h3>
+    <p id="loadingMsg">Menghubungkan ke Turso / data lokal</p>
+    <div class="loading-bar-track"><div id="loadingBar" class="loading-bar-fill"></div></div>
+    <p id="loadingPct" class="loading-pct">0%</p>
+  </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="mainApp" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">📊</div>
+      <div class="sidebar-title">INAPROC<br>INTELLIGENCE</div>
+      <div id="dbBadge" class="db-badge">—</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-page="ringkasan" onclick="navigate('ringkasan')">
+        <span class="nav-icon">🏠</span> Ringkasan Eksekutif
+      </button>
+      <button class="nav-btn" data-page="kl" onclick="navigate('kl')">
+        <span class="nav-icon">🏛️</span> Kementerian & Lembaga
+      </button>
+      <button class="nav-btn" data-page="wilayah" onclick="navigate('wilayah')">
+        <span class="nav-icon">🗺️</span> Wilayah & Dinas Pemda
+      </button>
+      <button class="nav-btn" data-page="cari" onclick="navigate('cari')">
+        <span class="nav-icon">🔍</span> Pencarian & Filter
+      </button>
+    </nav>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-filter">
+      <label class="filter-label">FILTER SEKTOR (K/L & Wilayah)</label>
+      <select id="sektorFilter" onchange="onSektorChange()">
+        <option value="Semua">Semua</option>
+        <option value="ICT">ICT</option>
+        <option value="Non-ICT">Non-ICT</option>
+      </select>
+      <p style="font-size:10px;color:#6B7280;margin-top:6px;line-height:1.4">
+        ⚠️ Ringkasan Eksekutif selalu menampilkan semua data
+      </p>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-footer">
+      <button class="sidebar-btn" onclick="rebuildCache()">🗑️ Rebuild Cache</button>
+      <button class="sidebar-btn" onclick="doLogout()">🚪 Logout</button>
+      <p class="sidebar-info">Telkomsel Enterprise<br>EBPM — EPES — Direktorat PnT<br>Bid Management Data Science</p>
+      <p id="sidebarDate" class="sidebar-date"></p>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main id="content" class="content">
+    <!-- Hero Banner -->
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <h1>📊 Dashboard Realisasi Pengadaan Pemerintah — INAPROC 2025</h1>
+      <p>Data Realisasi Seluruh KLPD &nbsp;|&nbsp; Telkomsel Enterprise — Bid Management Intelligence</p>
+    </div>
+
+    <!-- Dynamic Pages -->
+    <div id="pageRingkasan" class="page active"></div>
+    <div id="pageKl"        class="page"></div>
+    <div id="pageWilayah"   class="page"></div>
+    <div id="pageCari"      class="page"></div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p class="footer-title">Dashboard Realisasi Pengadaan Pemerintah — INAPROC 2025</p>
+      <p class="footer-sub">Telkomsel Enterprise &nbsp;|&nbsp; EBPM — EPES — Direktorat PnT &nbsp;|&nbsp; Bid Management Data Science</p>
+      <p id="footerStats" class="footer-dim"></p>
+    </footer>
+  </main>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

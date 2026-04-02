@@ -1,0 +1,14 @@
+# Abaikan file data besar
+*.csv
+*.json
+*.xlsx
+*.zip
+*.rar
+
+# Abaikan folder virtual environment (jika ada)
+venv/
+env/
+__pycache__/
+
+# Abaikan file log
+*.log
