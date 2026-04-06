@@ -44,9 +44,7 @@ const TEMA_KL = {
 
   "🎓 Pendidikan": {
     kw_inst: [
-      /kementerian\s*(pendidikan|kebudayaan|riset|teknologi|dikti|dikbud|dikbudristek)/i,
-      /kementerian\s*pan\b|kemen\s*pan[\s-]*rb\b|pendayagunaan\s*aparatur\s*negara/i,
-      /lembaga\s*administrasi\s*negara\b/i,
+      /kementerian\s*(pendidikan|riset|teknologi|dikti|dikbud|dikbudristek)/i,
       /kementerian\s*agama\b|kemenag\b/i,
       /bappenas\b|badan\s*perencanaan\s*pembangunan\s*nasional/i,
     ],
@@ -54,6 +52,18 @@ const TEMA_KL = {
       /pendidikan|universitas|politeknik|sekolah|pelatihan|diklat|perguruan\s*tinggi|pesantren|madrasah/i,
     ],
     kw_excl_inst: [
+      /kejaksaan\s*republik\s*indonesia|kejaksaan/i,
+      /kementerian\s*kebudayaan/i,
+      /kementerian\s*pariwisata/i,
+      /kementerian\s*ketenagakerjaan/i,
+      /badan\s*pemeriksa\s*keuangan/i,
+      /mahkamah\s*agung/i,
+      /lembaga\s*administrasi\s*negara/i,
+      /kementerian\s*kehutanan/i,
+      /kementerian\s*pendayagunaan\s*aparatur\s*negara/i,
+      /badan\s*pusat\s*statistik/i,
+      /radio/i,
+      /luar\s*negeri/i,
       /polri\b|kepolisian/i,
       /kementerian\s*(hukum|pertahanan|kesehatan|keuangan)/i,
       /tni\b|angkatan\s*(darat|laut|udara)\b/i,
@@ -61,7 +71,7 @@ const TEMA_KL = {
       /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
     ],
     color: "#1D4ED8", icon: "🎓",
-    desc: "Kemendikti · KemenPANRB · LAN · Kemenag · BAPPENAS",
+    desc: "Kemendikti · Kemenag · BAPPENAS",
     apbn_context: "Bidang APBN: Penguatan Pendidikan & SDM"
   },
 
@@ -69,15 +79,19 @@ const TEMA_KL = {
     kw_inst: [
       /kementerian\s*kesehatan\b|kemenkes\b/i,
       /bpjs\b|badan\s*penyelenggara\s*jaminan\s*sosial/i,
-      /badan\s*riset\s*dan\s*inovasi\s*nasional\b|brin\b/i,
       /kementerian\s*sosial\b|kemensos\b/i,
       /kemenko\s*(pmk|pembangunan\s*manusia)\b|kementerian\s*koordinator\s*(bidang\s*)?(pmk|pembangunan\s*manusia)/i,
-      /badan\s*gizi\s*nasional\b|bgn\b/i,
     ],
     kw_satker: [
       /kesehatan|rumah\s*sakit\b|rsud\b|puskesmas|farmasi|alat\s*kesehatan|gizi|kesehatan\s*masyarakat/i,
     ],
     kw_excl_inst: [
+      /badan\s*gizi\s*nasional/i,
+      /badan\s*riset\s*dan\s*inovasi\s*nasional|brin\b/i,
+      /kejaksaan\s*republik\s*indonesia|kejaksaan/i,
+      /kementerian\s*pertanian/i,
+      /kementerian\s*ketenagakerjaan/i,
+      /kementerian\s*imigrasi\s*dan\s*pemasyarakatan/i,
       /polri\b|kepolisian/i,
       /kementerian\s*(hukum|pertahanan|keuangan)/i,
       /tni\b|angkatan\s*(darat|laut|udara)\b/i,
@@ -85,7 +99,7 @@ const TEMA_KL = {
       /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
     ],
     color: "#BE185D", icon: "🏥",
-    desc: "Kemenkes · BPJS · BRIN · Kemensos · KemenkoPMK",
+    desc: "Kemenkes · BPJS · Kemensos · KemenkoPMK",
     apbn_context: "Bidang APBN: Kesehatan & Perlindungan Sosial"
   },
 
@@ -103,6 +117,9 @@ const TEMA_KL = {
       /pertahanan|militer|keamanan\s*nasional|intelijen|siber\s*sandi|imigrasi|pemasyarakatan|lapas\b|rutan\b/i,
     ],
     kw_excl_inst: [
+      /mahkamah\s*agung/i,
+      /kementerian\s*sekretariat\s*negara/i,
+      /kejaksaan/i,
       /kementerian\s*(pendidikan|kesehatan|pertanian|perdagangan|perindustrian)/i,
       /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
       /kementerian\s*(energi|esdm|perhubungan|keuangan|agama|sosial|koperasi|desa|pariwisata)/i,
@@ -124,6 +141,7 @@ const TEMA_KL = {
       /komunikasi\s*(dan\s*)?digital|informatika|telekomunikasi|penyiaran|digital\s*nasional/i,
     ],
     kw_excl_inst: [
+      /badan\s*riset\s*dan\s*inovasi\s*nasional|brin\b/i,
       // Hanya boleh Kementerian Komunikasi dan Digital
       /kementerian\s*(pendidikan|kesehatan|pertanian|perdagangan|perindustrian|energi|esdm|perhubungan|keuangan|agama|sosial|koperasi|desa|pariwisata|hukum|pertahanan)/i,
       /polri\b|kepolisian/i,
@@ -148,6 +166,9 @@ const TEMA_KL = {
       /energi|hilirisasi|esdm\b|minyak\s*(dan\s*)?gas|gas\s*bumi|pertambangan|mineral\b|nikel|bauksit|batubara|kilang|pembangkit\s*listrik|investasi\s*modal/i,
     ],
     kw_excl_inst: [
+      /kementerian\s*transmigrasi/i,
+      /kejaksaan\s*republik\s*indonesia|kejaksaan/i,
+      /komisi\s*pemilihan\s*umum/i,
       /kementerian\s*(pendidikan|kesehatan|pertanian|perdagangan|perindustrian)/i,
       /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
       /kementerian\s*(perhubungan|keuangan|agama|sosial|koperasi|desa|pariwisata|hukum|pertahanan)/i,
@@ -166,11 +187,15 @@ const TEMA_KL = {
       /bendahara\s*(umum\s*)?negara\b/i,
       /direktorat\s*jenderal\s*(pajak|bea\s*cukai|perbendaharaan|anggaran|kekayaan\s*negara)/i,
       /kementerian\s*perdagangan\b|kemendag\b/i,
+      /kementerian\s*pekerjaan\s*umum\s*(dan\s*)?perumahan\s*rakyat|kemen\s*pupr\b/i,
     ],
     kw_satker: [
-      /perhubungan|transportasi|bandara|pelabuhan|perkeretaapian|lalu\s*lintas\s*jalan|pajak|bea\s*cukai|perdagangan|ekspor|impor|perbendaharaan\s*negara|kekayaan\s*negara/i,
+      /perhubungan|transportasi|bandara|pelabuhan|perkeretaapian|lalu\s*lintas\s*jalan|pajak|bea\s*cukai|perdagangan|ekspor|impor|perbendaharaan\s*negara|kekayaan\s*negara|pekerjaan\s*umum|bina\s*marga|cipta\s*karya|sumber\s*daya\s*air/i,
     ],
     kw_excl_inst: [
+      /kementerian\s*kelautan\s*(dan\s*)?perikanan/i,
+      /kementerian\s*transmigrasi/i,
+      /kejaksaan\s*republik\s*indonesia|kejaksaan/i,
       /kementerian\s*(pendidikan|kesehatan|pertanian|perindustrian)/i,
       /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
       /kementerian\s*(energi|esdm|agama|sosial|koperasi|desa|pariwisata|hukum|pertahanan)/i,
@@ -178,7 +203,7 @@ const TEMA_KL = {
       /tni\b|angkatan\s*(darat|laut|udara)\b/i,
     ],
     color: "#6366F1", icon: "🏗️",
-    desc: "Kementerian Perhubungan · Kemenkeu / Bendahara Negara · Kementerian Perdagangan",
+    desc: "Kemenhub · Kemenkeu · Kemendag · KemenPUPR",
     apbn_context: "Bidang APBN: Pembangunan Ekonomi & Infrastruktur"
   },
 };
