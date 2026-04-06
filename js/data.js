@@ -52,18 +52,14 @@ const TEMA_KL = {
       /pendidikan|universitas|politeknik|sekolah|pelatihan|diklat|perguruan\s*tinggi|pesantren|madrasah/i,
     ],
     kw_excl_inst: [
-      /kejaksaan\s*republik\s*indonesia|kejaksaan/i,
-      /kementerian\s*kebudayaan/i,
-      /kementerian\s*pariwisata/i,
-      /kementerian\s*ketenagakerjaan/i,
-      /badan\s*pemeriksa\s*keuangan/i,
-      /mahkamah\s*agung/i,
-      /lembaga\s*administrasi\s*negara/i,
-      /kementerian\s*kehutanan/i,
-      /kementerian\s*pendayagunaan\s*aparatur\s*negara/i,
-      /badan\s*pusat\s*statistik/i,
-      /radio/i,
-      /luar\s*negeri/i,
+      // === BLACKLIST SPESIFIK PENDIDIKAN ===
+      /kementerian\s*pertanian/i,
+      /kementerian\s*kelautan\s*(dan\s*)?perikanan/i,
+      /badan\s*nasional\s*pencarian\s*dan\s*pertolongan|basarnas/i,
+      /badan\s*pengawasan\s*keuangan\s*(dan\s*)?pembangunan|bpkp/i,
+      /kementerian\s*sosial/i,
+      /kementerian\s*transmigrasi/i,
+      // === BLACKLIST UMUM ===
       /polri\b|kepolisian/i,
       /kementerian\s*(hukum|pertahanan|kesehatan|keuangan)/i,
       /tni\b|angkatan\s*(darat|laut|udara)\b/i,
@@ -205,36 +201,6 @@ const TEMA_KL = {
     color: "#6366F1", icon: "🏗️",
     desc: "Kemenhub · Kemenkeu · Kemendag · KemenPUPR",
     apbn_context: "Bidang APBN: Pembangunan Ekonomi & Infrastruktur"
-  },
-
-  "🌾 Pertanian & Ketahanan Pangan": {
-    kw_inst: [
-      /badan\s*pangan\s*nasional\b/i,
-      /kementerian\s*lingkungan\s*hidup\b/i,
-      /kementerian\s*kehutanan\b/i,
-      /kementerian\s*koordinator\s*(bidang\s*)?perekonomian/i,
-      /kementerian\s*koperasi/i,
-      /kementerian\s*desa\b/i,
-    ],
-    kw_satker: [
-      /pertanian|perkebunan|peternakan|pangan|ketahanan\s*pangan|tanaman\s*pangan|hortikultura|pupuk|irigasi\s*pertanian/i,
-    ],
-    kw_excl_inst: [
-      /kementerian\s*pertanian/i,
-      /kementerian\s*kelautan\s*(dan\s*)?perikanan/i,
-      /badan\s*nasional\s*pencarian\s*dan\s*pertolongan|basarnas/i,
-      /badan\s*pengawasan\s*keuangan\s*(dan\s*)?pembangunan|bpkp/i,
-      /kementerian\s*sosial/i,
-      /kementerian\s*transmigrasi/i,
-      /polri\b|kepolisian/i,
-      /tni\b|angkatan\s*(darat|laut|udara)\b/i,
-      /kementerian\s*(pendidikan|kesehatan|keuangan|hukum|pertahanan)/i,
-      /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
-      /kementerian\s*(energi|esdm|perhubungan|perdagangan|perindustrian)/i,
-    ],
-    color: "#15803D", icon: "🌾",
-    desc: "Badan Pangan Nasional · KemenLHK · Kemenkop · Kemendesa (exclude: Kementan, KKP, BASARNAS, BPKP, Kemensos, Transmigrasi)",
-    apbn_context: "Bidang APBN: Pertanian & Ketahanan Pangan"
   },
 };
 
@@ -436,11 +402,66 @@ function setLoading(title, msg, pct) {
   }
 }
 
+// ═══ IndexedDB CACHE — hemat jatah Turso rows read ═══
+const CACHE_DB_NAME = "inaproc_cache";
+const CACHE_STORE   = "data";
+const CACHE_KEY     = "main";
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam (ms)
+
+function openCacheDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CACHE_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(CACHE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getCachedData() {
+  try {
+    const db = await openCacheDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(CACHE_STORE, "readonly");
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.get(CACHE_KEY);
+      req.onsuccess = () => {
+        const cached = req.result;
+        if (cached && cached.ts && (Date.now() - cached.ts < CACHE_MAX_AGE)) {
+          resolve(cached);
+        } else {
+          resolve(null); // expired or missing
+        }
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
+async function setCachedData(rows, totalDb) {
+  try {
+    const db = await openCacheDB();
+    const tx = db.transaction(CACHE_STORE, "readwrite");
+    tx.objectStore(CACHE_STORE).put({
+      rows, totalDb, ts: Date.now()
+    }, CACHE_KEY);
+    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+  } catch (e) { console.warn("[Cache] Save failed:", e.message); }
+}
+
+async function clearCache() {
+  try {
+    const db = await openCacheDB();
+    const tx = db.transaction(CACHE_STORE, "readwrite");
+    tx.objectStore(CACHE_STORE).clear();
+    await new Promise(r => { tx.oncomplete = r; });
+  } catch {}
+}
+
 async function loadData() {
   document.getElementById("loadingOverlay").style.display = "flex";
   let tursoErr = null;
 
-  // ── 1) Try local JSON ──
+  // ── 1) Try local JSON (for local dev / python -m http.server) ──
   try {
     setLoading("Mencari data.json...", "File hasil preprocess.py", 5);
     const resp = await fetch("data.json");
@@ -506,7 +527,30 @@ async function loadData() {
     console.warn("[DB] JSON load failed:", jsonErr.message);
   }
 
-  // ── 2) Try Turso HTTP API ──
+  // ── 2) Try IndexedDB cache (HEMAT TURSO ROWS READ!) ──
+  try {
+    setLoading("Memeriksa cache lokal...", "IndexedDB", 15);
+    const cached = await getCachedData();
+    if (cached && cached.rows && cached.rows.length > 0) {
+      setLoading("Memuat dari cache...", `${fmtN(cached.rows.length)} baris (hemat Turso)`, 50);
+      const { all, filtered } = processRows(cached.rows);
+      DATA_ALL = all;
+      DATA = filtered;
+      TOTAL_ROWS = cached.totalDb || DATA_ALL.length;
+      DB_SOURCE = "Cache (IndexedDB)";
+
+      const ageMin = Math.round((Date.now() - cached.ts) / 60000);
+      const ageStr = ageMin < 60 ? `${ageMin} menit lalu` : `${Math.round(ageMin/60)} jam lalu`;
+      setLoading("Selesai!", `${fmtN(DATA_ALL.length)} total paket dari cache (${ageStr})`, 100);
+      await new Promise(r => setTimeout(r, 500));
+      document.getElementById("loadingOverlay").style.display = "none";
+      return true;
+    }
+  } catch (cacheErr) {
+    console.warn("[Cache] Read failed:", cacheErr.message);
+  }
+
+  // ── 3) Try Turso HTTP API → lalu simpan ke cache ──
   try {
     setLoading("Menghubungkan ke Turso...", TURSO_URL, 30);
     await tursoPost("SELECT 1");
@@ -523,13 +567,18 @@ async function loadData() {
     const sql = `SELECT Nama_Paket, Pagu_Rp, Instansi_Pembeli, Satuan_Kerja, Lokasi, Nama_Pemenang, Total_Pelaksanaan_Rp, Metode_Pemilihan, Jenis_Pengadaan, Prediksi_Nama FROM [${tbl}]`;
 
     const rows = await tursoFetchChunked(sql, TOTAL_ROWS, (loaded, total, pct) => {
-      setLoading("Memuat data dari Turso...", `${fmtN(loaded)} / ${fmtN(total)} baris`, 40 + pct * 0.5);
+      setLoading("Memuat data dari Turso...", `${fmtN(loaded)} / ${fmtN(total)} baris`, 40 + pct * 0.45);
     });
+
+    // ── Simpan raw rows ke IndexedDB (untuk next reload) ──
+    setLoading("Menyimpan ke cache lokal...", "Supaya reload berikutnya tidak fetch Turso lagi", 90);
+    await setCachedData(rows, TOTAL_ROWS);
+
     const { all, filtered } = processRows(rows);
     DATA_ALL = all;
     DATA = filtered;
-    DB_SOURCE = "Turso (HTTP)";
-    setLoading("Selesai!", `${fmtN(DATA.length)} paket aktif dimuat`, 100);
+    DB_SOURCE = "Turso (HTTP) → cached";
+    setLoading("Selesai!", `${fmtN(DATA_ALL.length)} total paket | Tersimpan di cache`, 100);
     await new Promise(r => setTimeout(r, 500));
     document.getElementById("loadingOverlay").style.display = "none";
     return true;
@@ -538,10 +587,10 @@ async function loadData() {
     console.warn("[DB] Turso failed:", e.message);
   }
 
-  // ── 3) All failed ──
+  // ── 4) All failed ──
   setLoading(
     "❌ Gagal memuat database",
-    "Jalankan dulu: python preprocess.py untuk buat data.json",
+    "Jalankan dulu: python preprocess.py untuk buat data.json, atau pastikan Turso online",
     0
   );
   return false;

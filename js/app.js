@@ -33,7 +33,9 @@ function doLogout() {
 }
 
 function rebuildCache() {
-  if (confirm("Rebuild cache? Data akan dimuat ulang dari sumber.")) location.reload();
+  if (confirm("Rebuild cache? Data akan dimuat ulang dari Turso (menghabiskan jatah rows read).")) {
+    clearCache().then(() => location.reload());
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -276,7 +278,7 @@ function renderKL(el) {
 
   el.innerHTML = `
     <div class="section-card-blue">
-      <p class="sec-title">🏛️ ANALISIS PER KEMENTERIAN / LEMBAGA — 7 BIDANG STRATEGIS</p>
+      <p class="sec-title">🏛️ ANALISIS PER KEMENTERIAN / LEMBAGA — 6 BIDANG STRATEGIS</p>
       <p class="sec-subtitle">Pemenang pengadaan per bidang K/L pusat (exclude Pemda Kab/Kota/Provinsi) — filter ketat per kementerian terkait</p>
     </div>
     <div class="tab-bar" id="klTabBar">
