@@ -389,6 +389,7 @@ async function tursoFetchChunked(sql, totalHint, onProgress) {
 // ═══ DATA STORE ═══
 let DATA = [];      // Filtered: pagu > 0 & pemenang exists (for charts/rankings)
 let DATA_ALL = [];  // ALL rows from DB — no filter (for Ringkasan Eksekutif KPI)
+let STATS = null;   // Pre-computed stats from stats.json (INSTANT mode)
 let DB_SOURCE = "";
 let TOTAL_ROWS = 0;
 
@@ -461,7 +462,24 @@ async function loadData() {
   document.getElementById("loadingOverlay").style.display = "flex";
   let tursoErr = null;
 
-  // ── 1) Try local JSON (for local dev / python -m http.server) ──
+  // ── 0) PRIORITY: stats.json (pre-computed, ~500 KB, INSTANT!) ──
+  try {
+    setLoading("Mencari stats.json...", "Mode instant (pre-computed)", 10);
+    const resp = await fetch("stats.json");
+    if (resp.ok) {
+      setLoading("Memuat stats.json...", "Dashboard instant — 0 Turso reads!", 60);
+      STATS = await resp.json();
+      TOTAL_ROWS = STATS.total_db || 0;
+      DB_SOURCE = `Stats (pre-computed ${STATS.generated || ""})`;
+      DATA_ALL = []; DATA = [];
+      setLoading("Selesai!", `Pre-computed | ${fmtN(TOTAL_ROWS)} records | 0 Turso reads`, 100);
+      await new Promise(r => setTimeout(r, 300));
+      document.getElementById("loadingOverlay").style.display = "none";
+      return true;
+    }
+  } catch (e) { console.warn("[Stats] stats.json not found, falling back..."); }
+
+  // ── 1) Try local data.json (for local dev / python -m http.server) ──
   try {
     setLoading("Mencari data.json...", "File hasil preprocess.py", 5);
     const resp = await fetch("data.json");

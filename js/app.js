@@ -113,27 +113,39 @@ function dlBtn(label, onclick, variant = "download") {
 // PAGE 1: RINGKASAN EKSEKUTIF — ALWAYS ALL DATA (no filter)
 // ═══════════════════════════════════════════════════════════════
 function renderRingkasan(el) {
-  // ═══ KPI: uses DATA_ALL (semua 6 juta+ rows, tanpa filter) ═══
-  const a        = DATA_ALL;
-  const totalPaguAll  = a.reduce((s,r) => s + r.pagu, 0);
-  const totalRealAll  = a.reduce((s,r) => s + r.realisasi, 0);
-  const nPaketAll     = a.length;
-  const nPemAll       = uniqueCount(a, "pemenang");
-  const nInstAll      = uniqueCount(a, "instansi");
-  const nSatkerAll    = uniqueCount(a, "satker");
-  const nICTAll       = a.filter(r => r.sektor === "ICT").length;
-  const nNonAll       = a.filter(r => r.sektor === "Non-ICT").length;
-  const paguICTAll    = a.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
-  const paguNonAll    = a.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
+  // ═══ STATS MODE (instant) vs RAW MODE (from DATA) ═══
+  let nPaketAll, totalPaguAll, totalRealAll, nPemAll, nInstAll, nSatkerAll;
+  let nICTAll, nNonAll, paguICTAll, paguNonAll;
+  let totalPagu, nPem, paguICT, paguNon, nICT, nNon;
+  let top20ICT, top20Non;
 
-  // ═══ CHARTS: uses DATA (filtered: pagu>0 & pemenang exist) ═══
-  const d        = DATA;
-  const totalPagu  = d.reduce((s,r) => s + r.pagu, 0);
-  const nPem       = uniqueCount(d, "pemenang");
-  const paguICT    = d.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
-  const paguNon    = d.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
-  const nICT       = d.filter(r => r.sektor === "ICT").length;
-  const nNon       = d.filter(r => r.sektor === "Non-ICT").length;
+  if (STATS) {
+    const r = STATS.ringkasan;
+    nPaketAll = r.total_paket; totalPaguAll = r.total_pagu; totalRealAll = r.total_realisasi;
+    nPemAll = r.pemenang_unik; nInstAll = r.instansi_unik; nSatkerAll = r.satker_unik;
+    nICTAll = r.n_ict; nNonAll = r.n_non; paguICTAll = r.pagu_ict; paguNonAll = r.pagu_non;
+    totalPagu = r.pagu_active || r.total_pagu;
+    nPem = r.pemenang_unik; paguICT = r.pagu_ict; paguNon = r.pagu_non;
+    nICT = r.n_ict; nNon = r.n_non;
+    top20ICT = r.top20_ict; top20Non = r.top20_non;
+  } else {
+    const a = DATA_ALL;
+    totalPaguAll = a.reduce((s,r) => s + r.pagu, 0);
+    totalRealAll = a.reduce((s,r) => s + r.realisasi, 0);
+    nPaketAll = a.length;
+    nPemAll = uniqueCount(a, "pemenang"); nInstAll = uniqueCount(a, "instansi"); nSatkerAll = uniqueCount(a, "satker");
+    nICTAll = a.filter(r => r.sektor === "ICT").length; nNonAll = a.filter(r => r.sektor === "Non-ICT").length;
+    paguICTAll = a.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
+    paguNonAll = a.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
+    const d = DATA;
+    totalPagu = d.reduce((s,r) => s + r.pagu, 0);
+    nPem = uniqueCount(d, "pemenang");
+    paguICT = d.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
+    paguNon = d.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
+    nICT = d.filter(r => r.sektor === "ICT").length;
+    nNon = d.filter(r => r.sektor === "Non-ICT").length;
+    top20ICT = null; top20Non = null;
+  }
 
   const grandId = uid("grandTop20");
   const heatId  = uid("heatmap");
@@ -198,11 +210,18 @@ function renderRingkasan(el) {
     </div>
     <div class="donut-grid">
       ${WILAYAH_LIST.map((w, i) => {
-        const dw  = d.filter(r => r.wilayah === w);
         const cfg = W_CFG[w];
+        let wPagu, wPaket, wPem;
+        if (STATS) {
+          const wd = STATS.ringkasan.wilayah_donut[w] || {};
+          wPagu = wd.pagu || 0; wPaket = wd.paket || 0; wPem = wd.pemenang || 0;
+        } else {
+          const dw = d.filter(r => r.wilayah === w);
+          wPagu = dw.reduce((s,r)=>s+r.pagu,0); wPaket = dw.length; wPem = uniqueCount(dw,"pemenang");
+        }
         return `<div class="donut-item" style="border-color:${cfg.c}">
           <h4 style="color:${cfg.c}">${cfg.i} ${w}</h4>
-          <div class="donut-stats">${fmtRp(dw.reduce((s,r)=>s+r.pagu,0))} | ${fmtN(dw.length)} paket | ${fmtN(uniqueCount(dw,"pemenang"))} pemenang</div>
+          <div class="donut-stats">${fmtRp(wPagu)} | ${fmtN(wPaket)} paket | ${fmtN(wPem)} pemenang</div>
           <div id="${donutIds[i]}" style="max-height:220px"></div>
         </div>`;
       }).join("")}
@@ -218,34 +237,42 @@ function renderRingkasan(el) {
       <div id="${heatId}"></div>
     </div>
     <div class="btn-group">
-      ${dlBtn("⬇️ Download Excel: Semua Data Ringkasan", `dlRingkasanAll()`)}
+      ${STATS ? "" : dlBtn("⬇️ Download Excel: Semua Data Ringkasan", `dlRingkasanAll()`)}
     </div>
   `;
 
   requestAnimationFrame(() => {
-    const aggICT = aggTopPemenang(d, "ICT", 20);
-    const aggNon = aggTopPemenang(d, "Non-ICT", 20);
+    const aggICT = top20ICT || aggTopPemenang(d, "ICT", 20);
+    const aggNon = top20Non || aggTopPemenang(d, "Non-ICT", 20);
 
     chartTop20(grandId, aggICT,
       "RANKING: 20 Pemenang ICT Terbesar — Seluruh Indonesia",
-      `n = ${fmtN(d.filter(r=>r.sektor==="ICT").length)} paket ICT | Pagu ICT: ${fmtRp(paguICT)} | Semesta: ${fmtRp(totalPagu)}`,
+      `n = ${fmtN(nICT)} paket ICT | Pagu ICT: ${fmtRp(paguICT)} | Semesta: ${fmtRp(totalPagu)}`,
       "#1D4ED8", totalPagu, 650);
 
     chartTop20(grandNonId, aggNon,
       "RANKING: 20 Pemenang Non-ICT Terbesar — Seluruh Indonesia",
-      `n = ${fmtN(d.filter(r=>r.sektor==="Non-ICT").length)} paket Non-ICT | Pagu Non-ICT: ${fmtRp(paguNon)} | Semesta: ${fmtRp(totalPagu)}`,
+      `n = ${fmtN(nNon)} paket Non-ICT | Pagu Non-ICT: ${fmtRp(paguNon)} | Semesta: ${fmtRp(totalPagu)}`,
       "#059669", totalPagu, 650);
 
     WILAYAH_LIST.forEach((w, i) => {
-      const dw  = d.filter(r => r.wilayah === w);
-      const ict = dw.filter(r => r.sektor === "ICT");
-      const non = dw.filter(r => r.sektor === "Non-ICT");
-      chartDonut(donutIds[i],
-        ict.reduce((s,r)=>s+r.pagu,0), non.reduce((s,r)=>s+r.pagu,0),
-        uniqueCount(ict,"pemenang"), uniqueCount(non,"pemenang"), w);
+      if (STATS) {
+        const wd = STATS.ringkasan.wilayah_donut[w] || {};
+        chartDonut(donutIds[i], wd.pagu_ict||0, wd.pagu_non||0, wd.pem_ict||0, wd.pem_non||0, w);
+      } else {
+        const dw = d.filter(r => r.wilayah === w);
+        const ict = dw.filter(r => r.sektor === "ICT");
+        const non = dw.filter(r => r.sektor === "Non-ICT");
+        chartDonut(donutIds[i], ict.reduce((s,r)=>s+r.pagu,0), non.reduce((s,r)=>s+r.pagu,0),
+          uniqueCount(ict,"pemenang"), uniqueCount(non,"pemenang"), w);
+      }
     });
 
-    renderHeatmap(heatId, d, "Heatmap");
+    if (STATS && STATS.ringkasan.heatmap) {
+      renderHeatmapFromStats(heatId, STATS.ringkasan.heatmap);
+    } else {
+      renderHeatmap(heatId, d, "Heatmap");
+    }
   });
 
   window.dlGrandTop20ICT = () => {
@@ -273,8 +300,8 @@ function _today() { return new Date().toISOString().slice(0,10); }
 // PAGE 2: KEMENTERIAN & LEMBAGA — 6 BIDANG STRATEGIS
 // ═══════════════════════════════════════════════════════════════
 function renderKL(el) {
-  const d = getFilteredData();
-  const temaNames = Object.keys(TEMA_KL);
+  const d = STATS ? [] : getFilteredData();
+  const temaNames = STATS ? Object.keys(STATS.kl) : Object.keys(TEMA_KL);
 
   el.innerHTML = `
     <div class="section-card-blue">
@@ -299,10 +326,21 @@ function renderKLTema(container, allData, tema) {
   const cfg = TEMA_KL[tema];
   if (!cfg) return;
 
-  const d        = filterByTema(allData, tema);
-  const totalPagu = d.reduce((s,r) => s + r.pagu, 0);
-  const nPaket   = d.length;
-  const instList  = getKLInstansiList(d);
+  // ═══ STATS MODE vs RAW MODE ═══
+  let d, totalPagu, nPaket, instList;
+  let sKL = null; // stats for this tema
+  if (STATS && STATS.kl[tema]) {
+    sKL = STATS.kl[tema];
+    d = []; // empty, charts use sKL directly
+    totalPagu = sKL.pagu;
+    nPaket = sKL.paket;
+    instList = sKL.instansi_list || [];
+  } else {
+    d = filterByTema(allData, tema);
+    totalPagu = d.reduce((s,r) => s + r.pagu, 0);
+    nPaket = d.length;
+    instList = getKLInstansiList(d);
+  }
   const id        = uid("kl");
 
   container.innerHTML = `
@@ -312,7 +350,7 @@ function renderKLTema(container, allData, tema) {
           <h3 style="color:${cfg.color}">${cfg.icon} ${tema}</h3>
           <p style="font-size:12px;color:#555;margin-top:4px">${cfg.desc}</p>
           <p style="font-weight:700;color:${cfg.color};margin-top:4px;font-size:12px">📈 ${cfg.apbn_context}</p>
-          <p style="margin-top:6px"><strong>${fmtN(nPaket)} paket</strong> | <strong>${fmtRp(totalPagu)}</strong> | ${fmtN(uniqueCount(d,"pemenang"))} pemenang unik | ${fmtN(uniqueCount(d,"instansi"))} instansi K/L</p>
+          <p style="margin-top:6px"><strong>${fmtN(nPaket)} paket</strong> | <strong>${fmtRp(totalPagu)}</strong> | ${fmtN(sKL ? sKL.pemenang_unik : uniqueCount(d,"pemenang"))} pemenang unik | ${fmtN(sKL ? sKL.instansi_unik : uniqueCount(d,"instansi"))} instansi K/L</p>
         </div>
       </div>
     </div>
@@ -321,9 +359,9 @@ function renderKLTema(container, allData, tema) {
     <div class="kpi-grid kpi-grid-5">
       ${kpiHTML("Total Paket", fmtN(nPaket))}
       ${kpiHTML("Total Pagu", fmtRp(totalPagu))}
-      ${kpiHTML("Pemenang Unik", fmtN(uniqueCount(d,"pemenang")))}
-      ${kpiHTML("Instansi K/L", fmtN(uniqueCount(d,"instansi")))}
-      ${kpiHTML("Satuan Kerja", fmtN(uniqueCount(d,"satker")))}
+      ${kpiHTML("Pemenang Unik", fmtN(sKL ? sKL.pemenang_unik : uniqueCount(d,"pemenang")))}
+      ${kpiHTML("Instansi K/L", fmtN(sKL ? sKL.instansi_unik : uniqueCount(d,"instansi")))}
+      ${kpiHTML("Satuan Kerja", fmtN(sKL ? sKL.satker_unik : uniqueCount(d,"satker")))}
     </div>
 
     <div class="tab-bar" id="klSub_tab_${id}">
@@ -372,8 +410,7 @@ function renderKLTema(container, allData, tema) {
 
   requestAnimationFrame(() => {
     // ICT
-    const ictData = d.filter(r => r.sektor === "ICT");
-    const aggICT  = aggTopPemenang(d, "ICT");
+    const aggICT  = sKL ? sKL.top20_ict : aggTopPemenang(d, "ICT");
     const ictEl   = document.getElementById(`klSub_${id}_ict`);
     const ictCId  = uid("klIct");
     ictEl.innerHTML = `
@@ -384,14 +421,13 @@ function renderKLTema(container, allData, tema) {
       </div>`;
     chartTop20(ictCId, aggICT,
       `Top 20 Pemenang ICT — ${tema}`,
-      `${cfg.apbn_context} | n = ${fmtN(ictData.length)} paket ICT | Pagu ICT: ${fmtRp(ictData.reduce((s,r)=>s+r.pagu,0))} | Semesta: ${fmtRp(allData.reduce((s,r)=>s+r.pagu,0))}`,
-      "#1D4ED8", allData.reduce((s,r)=>s+r.pagu,0), 600);
+      `${cfg.apbn_context} | Pagu: ${fmtRp(totalPagu)}`,
+      "#1D4ED8", totalPagu, 600);
     window[`dlKLICT_${id}`]     = () => exportAggRows(aggICT, `Top20_ICT_${tema.substring(0,15)}_${_today()}.xlsx`);
     window[`dlKLICT_csv_${id}`] = () => exportCSV(aggICT.map(g=>({Pemenang:g.nama,Total_Pagu:g.pagu,Paket:g.paket,Instansi:g.instansi_n})), `Top20_ICT_${tema.substring(0,10)}_${_today()}.csv`);
 
     // Non-ICT
-    const nonData = d.filter(r => r.sektor === "Non-ICT");
-    const aggNon  = aggTopPemenang(d, "Non-ICT");
+    const aggNon  = sKL ? sKL.top20_non : aggTopPemenang(d, "Non-ICT");
     const nonEl   = document.getElementById(`klSub_${id}_non`);
     const nonCId  = uid("klNon");
     nonEl.innerHTML = `
@@ -402,8 +438,8 @@ function renderKLTema(container, allData, tema) {
       </div>`;
     chartTop20(nonCId, aggNon,
       `Top 20 Pemenang Non-ICT — ${tema}`,
-      `n = ${fmtN(nonData.length)} paket Non-ICT | Pagu Non-ICT: ${fmtRp(nonData.reduce((s,r)=>s+r.pagu,0))}`,
-      "#059669", allData.reduce((s,r)=>s+r.pagu,0), 600);
+      `Pagu Non-ICT: ${fmtRp(totalPagu)}`,
+      "#059669", totalPagu, 600);
     window[`dlKLNon_${id}`]     = () => exportAggRows(aggNon, `Top20_NonICT_${tema.substring(0,15)}_${_today()}.xlsx`);
     window[`dlKLNon_csv_${id}`] = () => exportCSV(aggNon.map(g=>({Pemenang:g.nama,Total_Pagu:g.pagu,Paket:g.paket,Instansi:g.instansi_n})), `Top20_NonICT_${tema.substring(0,10)}_${_today()}.csv`);
 

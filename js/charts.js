@@ -269,3 +269,36 @@ function renderHeatmap(containerId, data, title) {
   html += `</tbody></table>`;
   el.innerHTML = html;
 }
+
+// ═══ HEATMAP FROM STATS (pre-computed) ═══
+function renderHeatmapFromStats(containerId, heatmapData) {
+  const el = document.getElementById(containerId);
+  if (!el || !heatmapData || !heatmapData.length) {
+    if (el) el.innerHTML = '<div class="empty-state"><p>Tidak ada data</p></div>';
+    return;
+  }
+  let maxVal = 0;
+  heatmapData.forEach(row => WILAYAH_LIST.forEach(w => { maxVal = Math.max(maxVal, row.values[w] || 0); }));
+
+  let html = '<table class="heatmap-table"><thead><tr><th style="text-align:left">Pemenang</th>';
+  WILAYAH_LIST.forEach(w => { html += `<th>${W_CFG[w].i} ${w}</th>`; });
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  heatmapData.forEach(row => {
+    const name = row.nama.length > 35 ? row.nama.substring(0,35)+"…" : row.nama;
+    html += `<tr><td style="text-align:left;font-weight:700;font-size:11px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</td>`;
+    WILAYAH_LIST.forEach(w => {
+      const v = row.values[w] || 0;
+      const intensity = maxVal > 0 ? v / maxVal : 0;
+      const r = Math.round(255 - intensity * 35);
+      const g = Math.round(255 - intensity * 80);
+      const b = Math.round(255 - intensity * 80);
+      const textColor = intensity > 0.6 ? "#FFF" : "#333";
+      const bg = v > 0 ? `rgb(${r},${g},${b})` : "#FAFAFA";
+      html += `<td style="background:${bg};color:${textColor}">${v > 0 ? fmtS(v) : "—"}</td>`;
+    });
+    html += `<td style="background:#1A1A2E;color:#FFF;font-weight:800">${fmtS(row.total)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
