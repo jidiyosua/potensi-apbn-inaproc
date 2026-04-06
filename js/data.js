@@ -206,6 +206,36 @@ const TEMA_KL = {
     desc: "Kemenhub · Kemenkeu · Kemendag · KemenPUPR",
     apbn_context: "Bidang APBN: Pembangunan Ekonomi & Infrastruktur"
   },
+
+  "🌾 Pertanian & Ketahanan Pangan": {
+    kw_inst: [
+      /badan\s*pangan\s*nasional\b/i,
+      /kementerian\s*lingkungan\s*hidup\b/i,
+      /kementerian\s*kehutanan\b/i,
+      /kementerian\s*koordinator\s*(bidang\s*)?perekonomian/i,
+      /kementerian\s*koperasi/i,
+      /kementerian\s*desa\b/i,
+    ],
+    kw_satker: [
+      /pertanian|perkebunan|peternakan|pangan|ketahanan\s*pangan|tanaman\s*pangan|hortikultura|pupuk|irigasi\s*pertanian/i,
+    ],
+    kw_excl_inst: [
+      /kementerian\s*pertanian/i,
+      /kementerian\s*kelautan\s*(dan\s*)?perikanan/i,
+      /badan\s*nasional\s*pencarian\s*dan\s*pertolongan|basarnas/i,
+      /badan\s*pengawasan\s*keuangan\s*(dan\s*)?pembangunan|bpkp/i,
+      /kementerian\s*sosial/i,
+      /kementerian\s*transmigrasi/i,
+      /polri\b|kepolisian/i,
+      /tni\b|angkatan\s*(darat|laut|udara)\b/i,
+      /kementerian\s*(pendidikan|kesehatan|keuangan|hukum|pertahanan)/i,
+      /kementerian\s*komunikasi|komdigi\b|kominfo\b/i,
+      /kementerian\s*(energi|esdm|perhubungan|perdagangan|perindustrian)/i,
+    ],
+    color: "#15803D", icon: "🌾",
+    desc: "Badan Pangan Nasional · KemenLHK · Kemenkop · Kemendesa (exclude: Kementan, KKP, BASARNAS, BPKP, Kemensos, Transmigrasi)",
+    apbn_context: "Bidang APBN: Pertanian & Ketahanan Pangan"
+  },
 };
 
 // Allowed prefixes for K/L drill-down (EXCLUDE pemda)
@@ -391,7 +421,8 @@ async function tursoFetchChunked(sql, totalHint, onProgress) {
 }
 
 // ═══ DATA STORE ═══
-let DATA = [];
+let DATA = [];      // Filtered: pagu > 0 & pemenang exists (for charts/rankings)
+let DATA_ALL = [];  // ALL rows from DB — no filter (for Ringkasan Eksekutif KPI)
 let DB_SOURCE = "";
 let TOTAL_ROWS = 0;
 
@@ -439,23 +470,34 @@ async function loadData() {
       raw = null;
 
       setLoading("Memproses data...", `${fmtN(json.rows.length)} baris`, 55);
-      DATA = json.rows.map(r => ({
-        nama_paket: r[0],
-        pagu: r[1],
-        instansi: r[2],
-        satker: r[3],
-        lokasi: r[4],
-        pemenang: r[5],
-        nama_display: r[6],
-        realisasi: r[7],
-        metode: r[8],
-        sektor: r[9],
-        wilayah: r[10],
-        is_pemda: r[11] === 1,
-      }));
-      TOTAL_ROWS = json.total_db || DATA.length;
+      const allRows = [];
+      const filteredRows = [];
+      json.rows.forEach(r => {
+        const pagu = r[1] || 0;
+        const pemenang = r[5] || "";
+        const nama_display = r[6] || pemenang;
+        const row = {
+          nama_paket: r[0] || "",
+          pagu,
+          instansi: r[2] || "",
+          satker: r[3] || "",
+          lokasi: r[4] || "",
+          pemenang,
+          nama_display,
+          realisasi: r[7] || 0,
+          metode: r[8] || "",
+          sektor: r[9] || "Non-ICT",
+          wilayah: r[10] || "Lainnya",
+          is_pemda: r[11] === 1,
+        };
+        allRows.push(row);
+        if (pagu > 0 && pemenang) filteredRows.push(row);
+      });
+      DATA_ALL = allRows;
+      DATA = filteredRows;
+      TOTAL_ROWS = json.total_db || DATA_ALL.length;
       DB_SOURCE = `JSON (${json.db_name || "data.json"})`;
-      setLoading("Selesai!", `${fmtN(DATA.length)} paket aktif dimuat`, 100);
+      setLoading("Selesai!", `${fmtN(DATA_ALL.length)} total paket | ${fmtN(DATA.length)} paket aktif`, 100);
       await new Promise(r => setTimeout(r, 500));
       document.getElementById("loadingOverlay").style.display = "none";
       return true;
@@ -478,12 +520,14 @@ async function loadData() {
     TOTAL_ROWS = parseInt(countRes.rows[0].cnt) || 0;
     setLoading("Memuat data...", `${fmtN(TOTAL_ROWS)} records ditemukan`, 40);
 
-    const sql = `SELECT Nama_Paket, Pagu_Rp, Instansi_Pembeli, Satuan_Kerja, Lokasi, Nama_Pemenang, Total_Pelaksanaan_Rp, Metode_Pemilihan, Jenis_Pengadaan, Prediksi_Nama FROM [${tbl}] WHERE Nama_Pemenang IS NOT NULL AND TRIM(Nama_Pemenang) != '' AND CAST(Pagu_Rp AS REAL) > 0`;
+    const sql = `SELECT Nama_Paket, Pagu_Rp, Instansi_Pembeli, Satuan_Kerja, Lokasi, Nama_Pemenang, Total_Pelaksanaan_Rp, Metode_Pemilihan, Jenis_Pengadaan, Prediksi_Nama FROM [${tbl}]`;
 
     const rows = await tursoFetchChunked(sql, TOTAL_ROWS, (loaded, total, pct) => {
       setLoading("Memuat data dari Turso...", `${fmtN(loaded)} / ${fmtN(total)} baris`, 40 + pct * 0.5);
     });
-    DATA = processRows(rows);
+    const { all, filtered } = processRows(rows);
+    DATA_ALL = all;
+    DATA = filtered;
     DB_SOURCE = "Turso (HTTP)";
     setLoading("Selesai!", `${fmtN(DATA.length)} paket aktif dimuat`, 100);
     await new Promise(r => setTimeout(r, 500));
@@ -504,14 +548,15 @@ async function loadData() {
 }
 
 function processRows(rows) {
-  return rows.map(r => {
+  const all = [];
+  const filtered = [];
+  rows.forEach(r => {
     const pagu = parseFloat(r.Pagu_Rp) || 0;
-    if (pagu <= 0) return null;
     const pred = (r.Prediksi_Nama || "").trim();
     const nama = (r.Nama_Pemenang || "").trim();
     const hasStar = nama.includes("*");
     const namaDisplay = (hasStar && pred && pred !== "nan") ? pred : nama;
-    return {
+    const row = {
       nama_paket: r.Nama_Paket || "",
       pagu,
       instansi: (r.Instansi_Pembeli || "").trim(),
@@ -528,7 +573,10 @@ function processRows(rows) {
       wilayah: getWilayah(r.Lokasi),
       is_pemda: isPemda(r.Instansi_Pembeli),
     };
-  }).filter(Boolean);
+    all.push(row);
+    if (pagu > 0 && nama) filtered.push(row);
+  });
+  return { all, filtered };
 }
 
 // ═══ AGGREGATION HELPERS ═══

@@ -51,7 +51,7 @@ async function initApp() {
   document.getElementById("dbBadge").textContent = DB_SOURCE;
   document.getElementById("dbBadge").className = DB_SOURCE.includes("Turso") ? "db-badge online" : "db-badge local";
   document.getElementById("sidebarDate").textContent = new Date().toLocaleDateString("id-ID", { day:"numeric", month:"long", year:"numeric" });
-  document.getElementById("footerStats").textContent = `📊 ${fmtN(DATA.length)} paket dari ${fmtN(TOTAL_ROWS)} records | Sumber: ${DB_SOURCE} | Generated: ${new Date().toLocaleString("id-ID")}`;
+  document.getElementById("footerStats").textContent = `📊 ${fmtN(DATA_ALL.length)} total paket (${fmtN(DATA.length)} aktif) dari ${fmtN(TOTAL_ROWS)} records | Sumber: ${DB_SOURCE} | Generated: ${new Date().toLocaleString("id-ID")}`;
   renderPage("ringkasan");
 }
 
@@ -111,18 +111,27 @@ function dlBtn(label, onclick, variant = "download") {
 // PAGE 1: RINGKASAN EKSEKUTIF — ALWAYS ALL DATA (no filter)
 // ═══════════════════════════════════════════════════════════════
 function renderRingkasan(el) {
-  // Ringkasan always uses ALL DATA — not filtered by sector
+  // ═══ KPI: uses DATA_ALL (semua 6 juta+ rows, tanpa filter) ═══
+  const a        = DATA_ALL;
+  const totalPaguAll  = a.reduce((s,r) => s + r.pagu, 0);
+  const totalRealAll  = a.reduce((s,r) => s + r.realisasi, 0);
+  const nPaketAll     = a.length;
+  const nPemAll       = uniqueCount(a, "pemenang");
+  const nInstAll      = uniqueCount(a, "instansi");
+  const nSatkerAll    = uniqueCount(a, "satker");
+  const nICTAll       = a.filter(r => r.sektor === "ICT").length;
+  const nNonAll       = a.filter(r => r.sektor === "Non-ICT").length;
+  const paguICTAll    = a.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
+  const paguNonAll    = a.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
+
+  // ═══ CHARTS: uses DATA (filtered: pagu>0 & pemenang exist) ═══
   const d        = DATA;
   const totalPagu  = d.reduce((s,r) => s + r.pagu, 0);
-  const totalReal  = d.reduce((s,r) => s + r.realisasi, 0);
-  const nPaket     = d.length;
   const nPem       = uniqueCount(d, "pemenang");
-  const nInst      = uniqueCount(d, "instansi");
-  const nSatker    = uniqueCount(d, "satker");
-  const nICT       = d.filter(r => r.sektor === "ICT").length;
-  const nNon       = d.filter(r => r.sektor === "Non-ICT").length;
   const paguICT    = d.filter(r => r.sektor === "ICT").reduce((s,r)=>s+r.pagu,0);
   const paguNon    = d.filter(r => r.sektor === "Non-ICT").reduce((s,r)=>s+r.pagu,0);
+  const nICT       = d.filter(r => r.sektor === "ICT").length;
+  const nNon       = d.filter(r => r.sektor === "Non-ICT").length;
 
   const grandId = uid("grandTop20");
   const heatId  = uid("heatmap");
@@ -141,12 +150,12 @@ function renderRingkasan(el) {
     </div>
 
     <div class="kpi-grid kpi-grid-6">
-      ${kpiHTML("Total Paket", fmtN(nPaket), `ICT: ${fmtN(nICT)} | Non-ICT: ${fmtN(nNon)}`)}
-      ${kpiHTML("Total Pagu", fmtRp(totalPagu), `ICT: ${fmtRp(paguICT)}`)}
-      ${kpiHTML("Total Realisasi", fmtRp(totalReal))}
-      ${kpiHTML("Pemenang Unik", fmtN(nPem))}
-      ${kpiHTML("Instansi Pembeli", fmtN(nInst))}
-      ${kpiHTML("Satuan Kerja", fmtN(nSatker))}
+      ${kpiHTML("Total Paket", fmtN(nPaketAll), `ICT: ${fmtN(nICTAll)} | Non-ICT: ${fmtN(nNonAll)}`)}
+      ${kpiHTML("Total Pagu", fmtRp(totalPaguAll), `ICT: ${fmtRp(paguICTAll)}`)}
+      ${kpiHTML("Total Realisasi", fmtRp(totalRealAll))}
+      ${kpiHTML("Pemenang Unik", fmtN(nPemAll))}
+      ${kpiHTML("Instansi Pembeli", fmtN(nInstAll))}
+      ${kpiHTML("Satuan Kerja", fmtN(nSatkerAll))}
     </div>
 
     <hr class="sep-red">
@@ -267,7 +276,7 @@ function renderKL(el) {
 
   el.innerHTML = `
     <div class="section-card-blue">
-      <p class="sec-title">🏛️ ANALISIS PER KEMENTERIAN / LEMBAGA — 6 BIDANG STRATEGIS</p>
+      <p class="sec-title">🏛️ ANALISIS PER KEMENTERIAN / LEMBAGA — 7 BIDANG STRATEGIS</p>
       <p class="sec-subtitle">Pemenang pengadaan per bidang K/L pusat (exclude Pemda Kab/Kota/Provinsi) — filter ketat per kementerian terkait</p>
     </div>
     <div class="tab-bar" id="klTabBar">
